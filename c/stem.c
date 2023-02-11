@@ -1,7 +1,7 @@
 #include <wchar.h>
 #include <stdbool.h>
 
-int strsfx(const wchar_t * ws, const wchar_t * sx)
+int wcssfx(const wchar_t * ws, const wchar_t * sx)
 {
     if (!ws || !sx)
         return 0;
@@ -12,7 +12,7 @@ int strsfx(const wchar_t * ws, const wchar_t * sx)
     return wcsncmp(ws + lenstr - lensuffix, sx, lensuffix) == 0;
 }
 
-void strrmsx(wchar_t * ws) {
+void wcsrmsfx(wchar_t * ws) {
     register unsigned int i;
     bool changed = true;
 
