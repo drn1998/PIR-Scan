@@ -2,25 +2,20 @@
 #include "dir-iterator.h"
 
 int main(int argc, char* argv[]) {
-    char * next_file = NULL;
+    char * next_file;
     
-    if(load_directory_by_path("test/") == -1) {
-        abort();
+    if(load_directory_by_path("/home/drn/") == -1) {
+        exit(EXIT_FAILURE);
     }
 
     next_file = next_filename();
-    puts(next_file);
 
-    next_file = next_filename();
-    puts(next_file);
+    while(next_file != NULL) {
+        puts(next_file);
+        next_file = next_filename();
+    }
 
-    next_file = next_filename();
-    puts(next_file);
-
-    next_file = next_filename();
-
-    if(!next_file)
-        close_directory();
+    close_directory();
 
     return 0;
 }

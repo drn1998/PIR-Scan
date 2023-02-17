@@ -14,11 +14,18 @@ int load_directory_by_path(char * path) {
 
         while((ep = readdir(dp)) != NULL) {
             if(ep->d_type == DT_REG) {
+                char ** new_adress;
                 filename_v[filename_n - 1] = malloc(strlen(ep->d_name) + strlen(path) + 1);
                 strcpy(filename_v[filename_n - 1], path);
                 strcat(filename_v[filename_n - 1], ep->d_name);
                 filename_n++;
-                filename_v = realloc(filename_v, filename_n * sizeof(char*));
+                new_adress = realloc(filename_v, filename_n * sizeof(char*));
+                if(new_adress != NULL) {
+                    filename_v = new_adress;
+                } else {
+                    // TODO Free memory already allocated at this point
+                    return -1;
+                }
             }
         }
         closedir(dp);
@@ -36,7 +43,11 @@ int load_directory_by_path(char * path) {
 char * next_filename() {
     static size_t n = 0;
 
-    if(n < filename_n) {
+    if(filename_n == 1) {
+        return NULL;
+    }
+
+    if(n < filename_n && filename_v != NULL) {
         n++;
         return filename_v[n - 1];
     }
@@ -45,8 +56,12 @@ char * next_filename() {
 }
 
 void close_directory() {
-    for(register unsigned int i = 0; i < filename_n - 1; i++) {
-        free(filename_v[i]);
+    if(filename_n == 1)
+        return;
+
+    for(register unsigned int i = 0; i < filename_n; i++) {
+        if(filename_v[i] != NULL)
+            free(filename_v[i]);
     }
 
     if(filename_v != NULL)
