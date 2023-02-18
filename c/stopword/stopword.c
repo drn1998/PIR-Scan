@@ -24,12 +24,15 @@ int unique(const void * base, size_t nmemb, size_t size, int (*compar)(const voi
 int load_stopwords(char * fpth) {
     FILE * fp;
     wchar_t buffer[STOPWORD_BUFFER_SIZE];
+    stopword_t * new_memory;
     size_t cs_buffer;
     size_t stopword_a;
 
     fp = fopen(fpth, "r");
 
 	if(fp == NULL) { return -1; }
+
+    new_memory = NULL;
 
     stopword_a = 32;
     stopword_n = 0;
@@ -40,6 +43,11 @@ int load_stopwords(char * fpth) {
 
     while(fwscanf(fp, L"%ls %u", buffer, &cs_buffer) == 2) {
         stopword_v[stopword_n].text = calloc(wcslen(buffer) + 1, sizeof(wchar_t));
+        if(stopword_v[stopword_n].text == NULL) {
+            fclose(fp);
+            free_stopwords();
+            return -1;
+        }
         wcscpy(stopword_v[stopword_n].text, buffer);
         if(cs_buffer == 1)
             stopword_v[stopword_n].is_cs = true;
@@ -48,14 +56,28 @@ int load_stopwords(char * fpth) {
         stopword_n++;
         if(stopword_a == stopword_n) {
             stopword_a *= 2;
-            stopword_v = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+            new_memory = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+            if(new_memory == NULL) {
+                fclose(fp);
+                free_stopwords();
+                return -1;
+            } else {
+                stopword_v = new_memory;
+            }
         }
     }
 
-    stopword_a = stopword_n;
-    stopword_v = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+    fclose(fp);
 
-	fclose(fp);
+    stopword_a = stopword_n;
+    new_memory = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+
+    if(new_memory == NULL) {
+        free_stopwords();
+        return -1;
+    }
+
+    stopword_v = new_memory;
 
     qsort(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
     if(!unique(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp)) { return -1; }
