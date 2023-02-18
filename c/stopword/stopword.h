@@ -3,16 +3,21 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <wchar.h>
+#include <wctype.h>
 #include <locale.h>
 
 #define STOPWORD_BUFFER_SIZE 32
 
-extern wchar_t ** stopwords;
-extern unsigned int stopword_iterator;
+typedef struct {
+    wchar_t * text;
+    bool is_cs;
+} stopword_t;
 
-int wcscmp_sort(const void * a, const void * b);
-int unique(const void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+extern stopword_t * stopword_v;
+extern size_t stopword_n;
+
 int load_stopwords(char * fpth);
 int is_stopword(wchar_t * ws);
 void free_stopwords();

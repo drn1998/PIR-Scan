@@ -1,12 +1,12 @@
 #include "stopword.h"
 
-wchar_t ** stopwords;
-unsigned int stopword_iterator;
+stopword_t * stopword_v;
+size_t stopword_n;
 
-int wcscmp_sort(const void * a, const void * b) {
-    const wchar_t * aa = *(const wchar_t **)a;
-    const wchar_t * bb = *(const wchar_t **)b;
-    return wcscmp(aa, bb);
+int stopword_cmp(const void * a, const void * b) {
+    stopword_t _a = *(stopword_t*)a;
+    stopword_t _b = *(stopword_t*)b;
+    return wcscmp(_a.text, _b.text);
 }
 
 int unique(const void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
@@ -24,44 +24,84 @@ int unique(const void * base, size_t nmemb, size_t size, int (*compar)(const voi
 int load_stopwords(char * fpth) {
     FILE * fp;
     wchar_t buffer[STOPWORD_BUFFER_SIZE];
+    size_t cs_buffer;
+    size_t stopword_a;
 
     fp = fopen(fpth, "r");
 
 	if(fp == NULL) { return -1; }
 
-	stopwords = calloc(stopword_iterator + 1, sizeof(wchar_t *));
+    stopword_a = 32;
+    stopword_n = 0;
 
-	while(fgetws(buffer, STOPWORD_BUFFER_SIZE, fp) != NULL) {
-		stopwords[stopword_iterator] = calloc(wcslen(buffer) + 1, sizeof(wchar_t));
-		wcsncpy(stopwords[stopword_iterator], buffer, wcslen(buffer) - 1); stopword_iterator++;
-		stopwords = realloc(stopwords, (stopword_iterator + 1) * sizeof(wchar_t *));
-	}
+	stopword_v = calloc(stopword_a, sizeof(stopword_t));
+
+    cs_buffer = 0;
+
+    while(fwscanf(fp, L"%ls %u", buffer, &cs_buffer) == 2) {
+        stopword_v[stopword_n].text = calloc(wcslen(buffer) + 1, sizeof(wchar_t));
+        wcscpy(stopword_v[stopword_n].text, buffer);
+        if(cs_buffer == 1)
+            stopword_v[stopword_n].is_cs = true;
+        else
+            stopword_v[stopword_n].is_cs = false;
+        stopword_n++;
+        if(stopword_a == stopword_n) {
+            stopword_a *= 2;
+            stopword_v = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+        }
+    }
+
+    stopword_a = stopword_n;
+    stopword_v = realloc(stopword_v, stopword_a * sizeof(stopword_t));
 
 	fclose(fp);
 
-    qsort(stopwords, stopword_iterator, sizeof(wchar_t*), wcscmp_sort);
+    qsort(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
+    if(!unique(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp)) { return -1; }
 
-    if(!unique(stopwords, stopword_iterator, sizeof(wchar_t*), wcscmp_sort)) { return -1; }
-
-    return 0;
+    return stopword_n + 1;
 }
 
 int is_stopword(wchar_t * ws) {
-    if(bsearch(&ws, stopwords, stopword_iterator, sizeof(wchar_t*), wcscmp_sort) == NULL) {
+    stopword_t key;
+    stopword_t * result;
+
+    key.text = calloc(wcslen(ws) + 1, sizeof(wchar_t));
+
+    if(key.text == NULL)
+        abort();
+
+    wcscpy(key.text, ws);
+
+    key.text[0] = towlower(ws[0]);
+
+    key.is_cs = false;
+
+    result = bsearch(&key, stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
+
+    free(key.text);
+
+    if(result == NULL)
         return 0;
-    } else {
+
+    if(result->is_cs == false)
         return 1;
-    }
+    
+    if(iswupper(ws[0]) && result->is_cs == true)
+        return 0;
+    else
+        return 1;
 }
 
 void free_stopwords() {
     register unsigned int j;
 
-    for (j = 0; j < stopword_iterator; j++) {
-		free(stopwords[j]);
+    for (j = 0; j < stopword_n; j++) {
+		free(stopword_v[j].text);
 	}
 
-	free(stopwords);
+	free(stopword_v);
 
     return;
 }
