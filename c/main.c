@@ -8,6 +8,7 @@
 #include "dir-iterator/dir-iterator.h"
 #include "pir-code/pir.h"
 #include "stem/stem.h"
+#include "stopword/stopword.h"
 
 /* TODO
 *  Allocate (and free) Tokens in loop to not affect inter-files
@@ -58,6 +59,10 @@ int eval(wchar_t * token) {
     wchar_t * local;
     char pir[5];
 
+    if(is_stopword(token)) {
+        return 0;
+    }
+
     local = calloc(wcslen(token) + 1, sizeof(wchar_t));
     wcscpy(local, token);
 
@@ -94,6 +99,11 @@ int main(int argc, char* argv[]) {
     FILE * rf;
 
     setlocale(LC_ALL, "");
+
+    if(load_stopwords("stopword/german.csv") == -1) {
+        wprintf(L"Unable to load stopwords.\n");
+        return -1;
+    }
 
     file_count = load_directory_by_path(path);
     
@@ -205,6 +215,8 @@ int main(int argc, char* argv[]) {
     close_directory();
 
     clear:
+
+    free_stopwords();
 
     for(register unsigned int i = 0; i < result_alloc - 1; i++) {
         free(results[i].context);
