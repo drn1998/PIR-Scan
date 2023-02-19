@@ -1,2 +1,3 @@
 # PIR Scan
-Searches natural language texts based on a PIR code (in development)
+The general idea of pir-scan is to provide a directory of text files which are searched for words (text separated by whitespace) that match a certain PIR code. Additional features are intended to ignore stopwords (words without a intrinsic meaning and which are very unlikely to be searched for) to reduce the amount of irrelevant results, use stemming (to also find plural or cases despite using PIR codes) and resolve abbreviations.
+Currently, resources (stopwords) and some code (stemming algorithm) is specific to the german language, but I intend to make it modular enough to allow adding other languages and I intend to add english myself.
