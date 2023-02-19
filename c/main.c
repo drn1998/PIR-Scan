@@ -33,7 +33,7 @@ size_t token_n;
 
 wchar_t * token_buffer;
 
-char pir_match[5] = {'3', '8', '\0', '\0', '\0'};
+char pir_match[5] = {'3', '\0', '\0', '\0', '\0'};
 
 bool stem = true;
 
@@ -43,11 +43,11 @@ int strpfx(const char *pre, const char *str)
 }
 
 int cmpres(const void *a, const void *b) {
+    // TODO Case-insensitive sort
+    result_t res_a = *(result_t *)a;
+    result_t res_b = *(result_t *)b;
 
-    result_t * res_a = (result_t *)a;
-    result_t * res_b = (result_t *)b;
-
-    return (wcscmp(res_a->key, res_b->key));
+    return (wcscmp(res_a.key, res_b.key));
 }
 
 int eval(wchar_t * token) {
@@ -193,14 +193,14 @@ int main(int argc, char* argv[]) {
         file_path = next_filename();
     }
 
-    //qsort(results, result_alloc, sizeof(result_t), cmpres);
+    qsort(results, result_alloc - 1, sizeof(result_t), cmpres);
 
     for(register unsigned int i = 0; i < result_alloc - 1; i++) {
         wprintf(L"Found '%ls' in %ls:\n%ls", results[i].key, results[i].section, results[i].context);
     }
 
     // Stats
-    wprintf(L"Matches:\t%u\nFiles:\t%u", result_alloc - 1, file_count - 1);
+    wprintf(L"Matches:\t%u\nFiles:\t%u", result_alloc - 1, file_count);
 
     close_directory();
 
