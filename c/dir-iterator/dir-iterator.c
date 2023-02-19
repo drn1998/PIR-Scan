@@ -19,7 +19,7 @@ int load_directory_by_path(char * path) {
 
         while((ep = readdir(dp)) != NULL) {
             if(ep->d_type == DT_REG) {
-                filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 1);
+                filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 2);
                 if(filename_v[filename_n] == NULL) {
                     filename_n++;
                     closedir(dp);
@@ -27,6 +27,8 @@ int load_directory_by_path(char * path) {
                     return -1;
                 }
                 strcpy(filename_v[filename_n], path);
+                if(path[strlen(path) - 1] != '/')
+                    strcat(filename_v[filename_n], "/");
                 strcat(filename_v[filename_n], ep->d_name);
                 filename_n++;
                 if(filename_n == filename_a) {

@@ -4,7 +4,7 @@
 int main(int argc, char* argv[]) {
     char * next_file = NULL;
     
-    if(load_directory_by_path("/home/drn/") == -1) {
+    if(load_directory_by_path("/home/drn") == -1) {
         exit(EXIT_FAILURE);
     }
 
