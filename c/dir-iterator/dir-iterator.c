@@ -20,6 +20,12 @@ int load_directory_by_path(char * path) {
         while((ep = readdir(dp)) != NULL) {
             if(ep->d_type == DT_REG) {
                 filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 1);
+                if(filename_v[filename_n] == NULL) {
+                    filename_n++;
+                    closedir(dp);
+                    close_directory();
+                    return -1;
+                }
                 strcpy(filename_v[filename_n], path);
                 strcat(filename_v[filename_n], ep->d_name);
                 filename_n++;
@@ -29,6 +35,7 @@ int load_directory_by_path(char * path) {
                     if(new_adress != NULL) {
                         filename_v = new_adress;
                     } else {
+                        closedir(dp);
                         close_directory();
                         return -1;
                     }
@@ -53,6 +60,8 @@ int load_directory_by_path(char * path) {
     }
 
     if(filename_n == 0) {
+        filename_n++;
+        close_directory();
         return -1;
     }
 
