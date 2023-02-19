@@ -19,7 +19,7 @@ int load_directory_by_path(char * path) {
 
         while((ep = readdir(dp)) != NULL) {
             if(ep->d_type == DT_REG) {
-                filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 2);
+                filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 2); // Two to leave space in case a slash has to be appended
                 if(filename_v[filename_n] == NULL) {
                     filename_n++;
                     closedir(dp);
