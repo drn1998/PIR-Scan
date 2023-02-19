@@ -11,7 +11,6 @@
 #include "stopword/stopword.h"
 
 /* TODO
-*  Allocate (and free) Tokens in loop to not affect inter-files
 *  "flush" the last tokens so they also get evaluated
 */
 
@@ -53,7 +52,6 @@ int cmpres(const void *a, const void *b) {
 
 int eval(wchar_t * token) {
     // TODO remove non_alphabetic characters
-    // TODO is stopword (*)
     // TODO resolve abbreviation
 
     wchar_t * local;
@@ -80,7 +78,7 @@ int eval(wchar_t * token) {
 }
 
 int main(int argc, char* argv[]) {
-    token_count = 3;
+    token_count = 10;
     token_alloc = token_count * 2 + 1;
     token_size = 64;
     token_n = 0;
