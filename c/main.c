@@ -1,11 +1,13 @@
 #include <wchar.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
 #include <locale.h>
 #include <stdbool.h>
+
+#include "dir-iterator/dir-iterator.h"
+#include "pir-code/pir.h"
+#include "stem/stem.h"
 
 /* TODO
 *  Allocate (and free) Tokens in loop to not affect inter-files
@@ -34,6 +36,11 @@ wchar_t * token_buffer;
 char pir_match[5] = {'3', '8', '\0', '\0', '\0'};
 
 bool stem = true;
+
+int strpfx(const char *pre, const char *str)
+{
+    return strncmp(pre, str, strlen(pre)) == 0;
+}
 
 int cmpres(const void *a, const void *b) {
 
@@ -76,46 +83,21 @@ int main(int argc, char* argv[]) {
     token_buffer = NULL;
     wchar_t * context_buffer = NULL;
 
-    char ** files = NULL;
-    size_t file_count = 1;
-
     token_t * tokens = NULL;
     result_t * results = NULL;
     size_t result_alloc = 1;
+    size_t file_count;
 
-    char path[] = "textfiles/";
+    char path[] = "/home/drn/textfiles";
     char * file_path = NULL;
-
-    DIR * dp;
-    struct dirent * ep;
 
     FILE * rf;
 
     setlocale(LC_ALL, "");
 
-    dp = opendir(path);
-
-    if (dp != NULL)
-    {
-        files = calloc(file_count, sizeof(char*));
-
-        while ((ep = readdir (dp)) != NULL)
-        if(ep->d_type == DT_REG) {
-            files[file_count - 1] = malloc(strlen(ep->d_name) + 1);
-            strcpy(files[file_count - 1], ep->d_name);
-            file_count++;
-            files = realloc(files, file_count * sizeof(char*));
-        }
-        closedir (dp);
-      }
-      else
-      {
-        wprintf(L"Unable to open directory '%s'", path);
-        return -1;
-      }
-
-    if(file_count == 1) {
-        wprintf(L"The directory '%s' is empty. It does not contain ordinary files.\n", path);
+    file_count = load_directory_by_path(path);
+    
+    if(file_count == -1) {
         goto clear;
     }
 
@@ -125,11 +107,12 @@ int main(int argc, char* argv[]) {
     results = calloc(result_alloc, sizeof(result_t));
 
     // Main loop, iterates through files
-    for(register unsigned int i = 0; i < file_count - 1; i++) {
-        file_path = calloc(sizeof(char), strlen(path) + strlen(files[i]) + 1);
+    for(register unsigned int i = 0; i < file_count; i++) {
+        file_path = next_filename();
 
-        strcat(file_path, path);
-        strcat(file_path, files[i]);
+        if(file_path == NULL) {
+            abort();
+        }
 
         rf = fopen(file_path, "r");
 
@@ -191,8 +174,8 @@ int main(int argc, char* argv[]) {
                 results[result_alloc - 1].key = calloc(wcslen(tokens[(token_n + token_count) % token_alloc].value) + 1, sizeof(wchar_t));
                 wcscpy(results[result_alloc - 1].key, tokens[(token_n + token_count) % token_alloc].value);
 
-                results[result_alloc - 1].section = calloc(strlen(files[i]) + 1, sizeof(wchar_t)); // SIC
-                swprintf(results[result_alloc - 1].section, strlen(files[i]) + 1, L"%s", files[i]);
+                results[result_alloc - 1].section = calloc(strlen(file_path) + 1, sizeof(wchar_t)); // SIC
+                swprintf(results[result_alloc - 1].section, strlen(file_path + 1), L"%s", file_path);
 
                 results[result_alloc - 1].rank = token_n;
 
@@ -225,12 +208,6 @@ int main(int argc, char* argv[]) {
     wprintf(L"Matches:\t%u\nFiles:\t%u", result_alloc - 1, file_count - 1);
 
     clear:
-    for(register unsigned int i = 0; i < file_count - 1; i++) {
-        free(files[i]);
-    }
-
-    if(files != NULL)
-        free(files);
 
     for(register unsigned int i = 0; i < result_alloc - 1; i++) {
         free(results[i].context);
