@@ -210,7 +210,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Stats
-    wprintf(L"Matches:\t%u\nFiles:\t%u", result_alloc - 1, file_count);
+    wprintf(L"Matches:\t%u\nFiles:\t%u\n", result_alloc - 1, file_count);
 
     close_directory();
 
