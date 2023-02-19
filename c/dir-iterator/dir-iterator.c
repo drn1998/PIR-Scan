@@ -8,27 +8,30 @@ int load_directory_by_path(char * path) {
     struct dirent * ep = NULL;
 
     filename_v = NULL;
-    filename_n = 1;
+    filename_n = 0;
+    size_t filename_a = 8;
+    char ** new_adress;
 
     dp = opendir(path);
 
     if(dp != NULL) {
-        filename_v = calloc(filename_n, sizeof(char*));
+        filename_v = calloc(filename_a, sizeof(char*));
 
         while((ep = readdir(dp)) != NULL) {
             if(ep->d_type == DT_REG) {
-                char ** new_adress;
-                filename_v[filename_n - 1] = malloc(strlen(ep->d_name) + strlen(path) + 1);
-                strcpy(filename_v[filename_n - 1], path);
-                strcat(filename_v[filename_n - 1], ep->d_name);
+                filename_v[filename_n] = malloc(strlen(ep->d_name) + strlen(path) + 1);
+                strcpy(filename_v[filename_n], path);
+                strcat(filename_v[filename_n], ep->d_name);
                 filename_n++;
-                new_adress = realloc(filename_v, filename_n * sizeof(char*));
-                if(new_adress != NULL) {
-                    filename_v = new_adress;
-                    filename_v[filename_n - 1] = NULL;
-                } else {
-                    // TODO Free memory already allocated at this point
-                    return -1;
+                if(filename_n == filename_a) {
+                    filename_a *= 2;
+                    new_adress = realloc(filename_v, filename_a * sizeof(char*));
+                    if(new_adress != NULL) {
+                        filename_v = new_adress;
+                    } else {
+                        close_directory();
+                        return -1;
+                    }
                 }
             }
         }
@@ -37,11 +40,23 @@ int load_directory_by_path(char * path) {
         return -1;
     }
 
-    if(filename_n == 1) {
+    filename_a = filename_n + 1;
+
+    new_adress = realloc(filename_v, filename_a * sizeof(char*));
+
+    if(new_adress != NULL) {
+        filename_v = new_adress;
+        filename_v[filename_n] = NULL;
+    } else {
+        close_directory();
         return -1;
     }
 
-    return 0;
+    if(filename_n == 0) {
+        return -1;
+    }
+
+    return filename_n + 1;
 }
 
 char * next_filename() {
@@ -60,7 +75,7 @@ char * next_filename() {
 }
 
 void close_directory() {
-    if(filename_n == 1)
+    if(filename_n == 0)
         return;
 
     for(register unsigned int i = 0; i < filename_n; i++) {
