@@ -1,11 +1,14 @@
 #include "dir-iterator.h"
 
-char ** filename_v = NULL;
-size_t filename_n = 1;
+char ** filename_v;
+size_t filename_n;
 
 int load_directory_by_path(char * path) {
-    DIR * dp;
-    struct dirent * ep;
+    DIR * dp = NULL;
+    struct dirent * ep = NULL;
+
+    filename_v = NULL;
+    filename_n = 1;
 
     dp = opendir(path);
 
@@ -22,6 +25,7 @@ int load_directory_by_path(char * path) {
                 new_adress = realloc(filename_v, filename_n * sizeof(char*));
                 if(new_adress != NULL) {
                     filename_v = new_adress;
+                    filename_v[filename_n - 1] = NULL;
                 } else {
                     // TODO Free memory already allocated at this point
                     return -1;

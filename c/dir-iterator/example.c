@@ -2,7 +2,7 @@
 #include "dir-iterator.h"
 
 int main(int argc, char* argv[]) {
-    char * next_file;
+    char * next_file = NULL;
     
     if(load_directory_by_path("/home/drn/") == -1) {
         exit(EXIT_FAILURE);
