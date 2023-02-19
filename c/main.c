@@ -106,21 +106,16 @@ int main(int argc, char* argv[]) {
 
     results = calloc(result_alloc, sizeof(result_t));
 
+    file_path = next_filename();
+
     // Main loop, iterates through files
-    for(register unsigned int i = 0; i < file_count; i++) {
-        file_path = next_filename();
-
-        if(file_path == NULL) {
-            abort();
-        }
-
+    while(file_path != NULL) {
         rf = fopen(file_path, "r");
 
         token_n = 0;
 
         if(rf == NULL) {
             wprintf(L"Unable to read from file %s (ignored)", file_path);
-            free(file_path);
             continue;
         }
 
@@ -175,7 +170,7 @@ int main(int argc, char* argv[]) {
                 wcscpy(results[result_alloc - 1].key, tokens[(token_n + token_count) % token_alloc].value);
 
                 results[result_alloc - 1].section = calloc(strlen(file_path) + 1, sizeof(wchar_t)); // SIC
-                swprintf(results[result_alloc - 1].section, strlen(file_path + 1), L"%s", file_path);
+                swprintf(results[result_alloc - 1].section, strlen(file_path) + 1, L"%s", file_path);
 
                 results[result_alloc - 1].rank = token_n;
 
@@ -195,7 +190,7 @@ int main(int argc, char* argv[]) {
 
         free(token_buffer);
 
-        free(file_path);
+        file_path = next_filename();
     }
 
     //qsort(results, result_alloc, sizeof(result_t), cmpres);
@@ -206,6 +201,8 @@ int main(int argc, char* argv[]) {
 
     // Stats
     wprintf(L"Matches:\t%u\nFiles:\t%u", result_alloc - 1, file_count - 1);
+
+    close_directory();
 
     clear:
 
