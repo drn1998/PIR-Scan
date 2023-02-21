@@ -28,17 +28,12 @@ int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopwo
         return 0;
     }
 
-    wprintf(L"%ls ", local);
-
     if(stem != NULL && prefix == 0)
         stem(local);
 
     write_pir_code(local, pir);
 
-    wprintf(L"%5s %s\n", pir, pir_match);
-
     if(strpfx(pir, pir_match)) {
-        wprintf(L"FOUND!\n");
         return 1;
     }
 

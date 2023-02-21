@@ -159,6 +159,12 @@ int main(int argc, char* argv[]) {
         cleanup();
         exit(EXIT_FAILURE);
     }
+
+    if(prefix != 0 && stemmer != NULL) {
+        wprintf(L"Error: Prefix and stemming cannot coexist.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
     
     token_n = context_length * 2 + 1;
     current_file = next_filename();
