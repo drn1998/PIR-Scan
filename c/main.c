@@ -37,12 +37,21 @@ size_t context_buffer_size;
 bool include_stopwords = false;
 bool directory_opened = false;
 
+int wcscicmp(const wchar_t *a, const wchar_t *b)
+{
+    for (;; a++, b++) {
+        int d = towlower((wint_t)*a) - towlower((wint_t)*b);
+        if (d != 0 || !*a)
+            return d;
+    }
+}
+
 int cmpres(const void *a, const void *b) {
     // TODO Case-insensitive sort
     result_t res_a = *(result_t *)a;
     result_t res_b = *(result_t *)b;
 
-    return (wcscmp(res_a.key, res_b.key));
+    return (wcscicmp(res_a.key, res_b.key));
 }
 
 void print_usage() {
