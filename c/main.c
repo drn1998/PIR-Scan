@@ -11,6 +11,9 @@
 #include "string-util/string-util.h"
 #include "stopword/stopword.h"
 
+#define DEFAULT_FONT_SIZE 6
+#define MAXIMUM_FONT_SIZE 30
+
 typedef struct token {
     wchar_t value[TOKEN_SIZE];
     wchar_t follows;
@@ -102,6 +105,8 @@ int main(int argc, char* argv[]) {
 
     size_t prefix = 0;
 
+    size_t html_fontsize = DEFAULT_FONT_SIZE;
+
     result_t * realloc_address;
 
     int opt = 0;
@@ -115,12 +120,13 @@ int main(int argc, char* argv[]) {
         {"context-length", required_argument, 0, 'n'},
         {"output", required_argument, 0, 'o'},
         {"prefix", required_argument, 0, 'P'},
+        {"html-fontsize", required_argument, 0, 'f'},
         {0, 0, 0, 0}
     };
 
     setlocale(LC_ALL, "");
 
-    while ((opt = getopt_long(argc, argv,"p:c:n:o:xs", 
+    while ((opt = getopt_long(argc, argv,"f:P:p:c:n:o:xs", 
                    long_options, &long_index )) != -1) {
         switch (opt) {
              case 'p' : directory_path = optarg;
@@ -136,6 +142,8 @@ int main(int argc, char* argv[]) {
              case 'o' : output = optarg;
                  break;
              case 'P' : prefix = atoi(optarg);
+                 break;
+             case 'f' : html_fontsize = atoi(optarg);
                  break;
              default: print_usage(); 
                  exit(EXIT_FAILURE);
@@ -173,6 +181,10 @@ int main(int argc, char* argv[]) {
         wprintf(L"Error: Prefix and stemming cannot coexist.\n");
         cleanup();
         exit(EXIT_FAILURE);
+    }
+
+    if(html_fontsize > MAXIMUM_FONT_SIZE) {
+        html_fontsize = MAXIMUM_FONT_SIZE;
     }
     
     token_n = context_length * 2 + 1;
@@ -290,9 +302,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Todo font size etc. as parameter
-
-    fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: 6pt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: 4;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, output);
+    fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: %upt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: 4;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, html_fontsize, output);
 
     for(register unsigned int i = 0; i < result_n; i++) {
         if(i > 0) {
