@@ -17,15 +17,23 @@
 #define DEFAULT_COL_COUNT 4
 #define MAXIMUM_COL_COUNT 12
 
+/**
+ * @brief Datatype for a token, having a value and (currently unused) a character immediatly following that token in the source text.
+ * 
+ */
 typedef struct token {
-    wchar_t value[TOKEN_SIZE];
-    wchar_t follows;
+    wchar_t value[TOKEN_SIZE]; // The "value", e.g. literal string of the token
+    wchar_t follows; // The character immediatly following the token to tell end of ordinary sentences apart from end of paragraphs in the future.
 } token_t;
 
+/**
+ * @brief Datatype for a result; an instance of a token that satisfied the provided search conditions
+ * 
+ */
 typedef struct result {
-    wchar_t * key;
-    wchar_t * context;
-    wchar_t * section;  // usually the filename
+    wchar_t * key;  // The token that was matched
+    wchar_t * context;  // A part from the text where the token was found
+    wchar_t * section;  // The section where it was found (usually the filename)
     unsigned int rank;
 } result_t;
 
@@ -38,11 +46,18 @@ size_t result_n = 0;    // Number of existing results
 size_t result_a = 16;    // Number of allocated results
 
 wchar_t * context_buffer = NULL;   // Buffer for the context string in the result
-size_t context_buffer_size;
+size_t context_buffer_size; // Size of the buffer where the context string written to result_t is copied
 
 bool include_stopwords = false;
 bool directory_opened = false;
 
+/**
+ * @brief Compares two wide character strings without regarding upper/lower case.
+ * 
+ * @param a The first string to be compared
+ * @param b The second string to be compared
+ * @return 0, if equal, otherwise -1 or 1 depending on lexical priority
+ */
 int wcscicmp(const wchar_t *a, const wchar_t *b)
 {
     for (;; a++, b++) {
@@ -52,6 +67,13 @@ int wcscicmp(const wchar_t *a, const wchar_t *b)
     }
 }
 
+/**
+ * @brief A qsort-style comparison method for the datatype result_t, comparing by the key.
+ * 
+ * @param a The first result_t object to be compared
+ * @param b The second result_t object to be compared
+ * @return 0, if equal, otherwise -1 or 1 depending on lexical priority
+ */
 int cmpres(const void *a, const void *b) {
     // TODO Case-insensitive sort
     result_t res_a = *(result_t *)a;
