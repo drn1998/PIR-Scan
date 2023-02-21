@@ -91,6 +91,8 @@ int main(int argc, char* argv[]) {
 
     size_t context_length = 3;  // Number of tokens displayed before and after matching token
 
+    size_t prefix = 0;
+
     result_t * realloc_address;
 
     int opt = 0;
@@ -103,6 +105,7 @@ int main(int argc, char* argv[]) {
         {"use-stemming", no_argument, 0, 's'},
         {"context-length", required_argument, 0, 'n'},
         {"output", required_argument, 0, 'o'},
+        {"prefix", required_argument, 0, 'P'},
         {0, 0, 0, 0}
     };
 
@@ -122,6 +125,8 @@ int main(int argc, char* argv[]) {
              case 's' : stemmer = wcsrmsfx;
                  break;
              case 'o' : output = optarg;
+                 break;
+             case 'P' : prefix = atoi(optarg);
                  break;
              default: print_usage(); 
                  exit(EXIT_FAILURE);
@@ -147,6 +152,12 @@ int main(int argc, char* argv[]) {
             cleanup();
             exit(EXIT_FAILURE);
         }
+    }
+
+    if((prefix < 3 || prefix > 8) && prefix != 0) {
+        wprintf(L"Invalid prefix length: Must be in range 3 to 8.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
     }
     
     token_n = context_length * 2 + 1;
@@ -199,7 +210,7 @@ int main(int argc, char* argv[]) {
 
             token_c++;
 
-            if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer)) {
+            if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer, prefix)) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
                 swprintf(context_buffer, context_buffer_size, L"[…] ");
                 for(register unsigned j = 0; j < token_n - (is_eof != EOF ? 0 : context_length); j++) {
@@ -254,7 +265,7 @@ int main(int argc, char* argv[]) {
     }
     result_v = realloc_address;
 
-    qsort(result_v, result_n - 1, sizeof(result_t), cmpres);
+    qsort(result_v, result_n, sizeof(result_t), cmpres);
 
     fp_write = fopen(output, "w");
 
@@ -268,7 +279,7 @@ int main(int argc, char* argv[]) {
 
     fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: 6pt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: 4;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, output);
 
-    for(register unsigned int i = 0; i < result_n - 1; i++) {
+    for(register unsigned int i = 0; i < result_n; i++) {
         if(i > 0) {
             if(wcscmp(result_v[i].key, result_v[i - 1].key) != 0)
                 fwprintf(fp_write, L"</p>\n\t\t<p><strong>%ls</strong> found in %ls:<br/>", result_v[i].key, result_v[i].section);

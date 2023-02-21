@@ -10,6 +10,6 @@
 
 #define TOKEN_SIZE 64
 
-int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *));
+int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix);
 
 #endif

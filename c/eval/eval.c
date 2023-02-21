@@ -1,6 +1,6 @@
 #include "eval.h"
 
-int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *)) {
+int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix) {
     wchar_t local[TOKEN_SIZE];
     char pir[5];
 
@@ -22,13 +22,25 @@ int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopwo
         }
     }
 
-    if(stem != NULL)
+    if(prefix > 2 && wcslen(local) >= prefix) {
+        local[prefix] = '\0';
+    } else if (wcslen(local) < prefix) {
+        return 0;
+    }
+
+    wprintf(L"%ls ", local);
+
+    if(stem != NULL && prefix == 0)
         stem(local);
 
     write_pir_code(local, pir);
 
-    if(strpfx(pir, pir_match))
+    wprintf(L"%5s %s\n", pir, pir_match);
+
+    if(strpfx(pir, pir_match)) {
+        wprintf(L"FOUND!\n");
         return 1;
+    }
 
     return 0;
 }
