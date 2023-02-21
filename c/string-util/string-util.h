@@ -6,13 +6,31 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Wide character string: Remove by discriminating function (isw-style). */
+/**
+ * @brief Removes characters from a string by a wctype-style discriminating function.
+ * 
+ * @param ws The wide string where the characters are to be removed from (in place)
+ * @param discrim The discriminating function
+ * @return Number of characters removed
+ */
 int wcsrmbydfn(wchar_t * ws, int(*discrim)(wint_t));
 
-/* Last character satisfies discriminating function? */
+/**
+ * @brief Checks if the last character of a string satisfies a discriminating function.
+ * 
+ * @param ws The wide string from which the last character is to be tested
+ * @param discrim The discriminating function
+ * @return 1, if the last character satisfies the function, otherwise 0
+ */
 int wcseosdfn(const wchar_t * ws, int(*discrim)(wint_t));
 
-/* Characters satisfy discriminating function? -1: None of them, 0 some, 1 all*/
+/**
+ * @brief Checks if the characters of the function (all, some, none) satisfy a discriminating function.
+ * 
+ * @param ws The wide string from which the characters are to be tested
+ * @param discrim The discriminating function
+ * @return 1 if all characters satisfy the function, 0 if at least one character satisfies the function, and -1 if no characters satisfy the function or the length of the string is 0.
+ */
 int wcssatdfn(const wchar_t * ws, int(*discrim)(wint_t));
 
 /* Checks if a wcs has a certain prefix */
