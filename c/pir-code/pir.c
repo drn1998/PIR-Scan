@@ -1,10 +1,5 @@
 #include "pir.h"
 
-int wcspfx(const wchar_t *pre, const wchar_t *str)
-{
-    return wcsncmp(pre, str, wcslen(pre)) == 0;
-}
-
 wchar_t latinize_lowercase(wchar_t wc) {
 	switch(wc) {
 		case L'ä':
@@ -68,13 +63,13 @@ void write_pir_code(const wchar_t * s, char c[5]) {
 
 	while(offset < wcslen(cp)) {
 		for(i = 0; i < sizeof(code)/sizeof(char*); i++) {
-			if(wcspfx(verb[i], cp + offset)) {
+			if(wcspfx(cp + offset, verb[i])) {
 				for(j = 0; j < strlen(code[i]); j++) {
 					digits[digits_pos % 5] = (digits[digits_pos % 5] + (code[i][j] - '0')) % 10;
 					digits_pos++;
 				}
 				offset += wcslen(verb[i]);
-				break;	
+				break;
 			}
 			if(1 + i == sizeof(code)/sizeof(char*)) {
 				offset++;	// Skip unrecognized character

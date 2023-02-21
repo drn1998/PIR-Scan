@@ -1,21 +1,18 @@
-#include <wchar.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <locale.h>
-#include <stdbool.h>
+#include <wchar.h>
+#include <wctype.h>
+
+#include <getopt.h>
 
 #include "dir-iterator/dir-iterator.h"
-#include "pir-code/pir.h"
+#include "eval/eval.h"
 #include "stem/stem.h"
+#include "string-util/string-util.h"
 #include "stopword/stopword.h"
 
-/* TODO
-*  "flush" the last tokens so they also get evaluated
-*/
-
 typedef struct token {
-    wchar_t * value;
+    wchar_t value[TOKEN_SIZE];
     wchar_t follows;
 } token_t;
 
@@ -26,21 +23,19 @@ typedef struct result {
     unsigned int rank;
 } result_t;
 
-size_t token_count;
-size_t token_alloc;
-size_t token_size;
-size_t token_n;
+token_t * token_v = NULL;  // Vector of token_n tokens
+size_t token_n;     // Numer of tokens in the cyclic array
+size_t token_c;     // Tokens alltogether, not just size of cyclic array
 
-wchar_t * token_buffer;
+result_t * result_v;    // Vector of result_t results
+size_t result_n = 0;    // Number of existing results
+size_t result_a = 16;    // Number of allocated results
 
-char pir_match[5] = {'3', '\0', '\0', '\0', '\0'};
+wchar_t * context_buffer = NULL;   // Buffer for the context string in the result
+size_t context_buffer_size;
 
-bool stem = true;
-
-int strpfx(const char *pre, const char *str)
-{
-    return strncmp(pre, str, strlen(pre)) == 0;
-}
+bool include_stopwords = false;
+bool directory_opened = false;
 
 int cmpres(const void *a, const void *b) {
     // TODO Case-insensitive sort
@@ -50,178 +45,243 @@ int cmpres(const void *a, const void *b) {
     return (wcscmp(res_a.key, res_b.key));
 }
 
-int eval(wchar_t * token) {
-    // TODO remove non_alphabetic characters
-    // TODO resolve abbreviation
+void print_usage() {
+    wprintf(L"Usage: pir-scan --path path-to-dir --pir pir-code --output file\n");
+    return;
+}
 
-    wchar_t * local;
-    char pir[5];
-
-    if(is_stopword(token)) {
-        return 0;
+void cleanup() {
+    if(directory_opened == true)
+        close_directory();
+    
+    if(include_stopwords == false)
+        free_stopwords();
+    
+    if(context_buffer != NULL) {
+        free(context_buffer);
+        context_buffer = NULL;
     }
 
-    local = calloc(wcslen(token) + 1, sizeof(wchar_t));
-    wcscpy(local, token);
+    for(register size_t i = 0; i < result_n; i++) {
+        free(result_v[i].key);
+        free(result_v[i].context);
+        free(result_v[i].section);
+    }
 
-    if(stem)
-        wcsrmsfx(local);
+    free(result_v);
 
-    write_pir_code(local, pir);
-
-    free(local);
-
-    if(strpfx(pir_match, pir))
-        return 1;
-
-    return 0;
+    return;
 }
 
 int main(int argc, char* argv[]) {
-    token_count = 10;
-    token_alloc = token_count * 2 + 1;
-    token_size = 64;
-    token_n = 0;
+    char * directory_path = NULL;   // The path of the directory with the relevant text files
+    char * pir_code = NULL; // The PIR code that is matched against by pir-scan
+    char * output = NULL;  // The filename of the output file where results are written to
+    char * current_file = NULL; // The file currently scanned
 
-    token_buffer = NULL;
-    wchar_t * context_buffer = NULL;
+    wchar_t token_buffer[TOKEN_SIZE];   // Buffer for current token read by fscanf
 
-    token_t * tokens = NULL;
-    result_t * results = NULL;
-    size_t result_alloc = 1;
-    size_t file_count;
+    FILE * fp_read; // File pointer to the current input file being read
+    FILE * fp_write; // File pointer to the output file written to
 
-    char path[] = "/home/drn/textfiles";
-    char * file_path = NULL;
+    wint_t is_eof;
+    size_t decrement_token_count;
 
-    FILE * rf;
+    void (*stemmer)(wchar_t*) = NULL;
+
+    size_t context_length = 3;  // Number of tokens displayed before and after matching token
+
+    result_t * realloc_address;
+
+    int opt = 0;
+    int long_index = 0;
+
+    static struct option long_options[] = {
+        {"path", required_argument, 0, 'p'},
+        {"pir", required_argument, 0, 'c'},
+        {"include-stopwords", no_argument, 0, 'x'},
+        {"use-stemming", no_argument, 0, 's'},
+        {"context-length", required_argument, 0, 'n'},
+        {"output", required_argument, 0, 'o'},
+        {0, 0, 0, 0}
+    };
 
     setlocale(LC_ALL, "");
 
-    if(load_stopwords("stopword/german.csv") == -1) {
-        wprintf(L"Unable to load stopwords.\n");
-        return -1;
+    while ((opt = getopt_long(argc, argv,"p:c:n:o:xs", 
+                   long_options, &long_index )) != -1) {
+        switch (opt) {
+             case 'p' : directory_path = optarg;
+                 break;
+             case 'c' : pir_code = optarg;
+                 break;
+             case 'n' : context_length = atoi(optarg);
+                 break;
+             case 'x' : include_stopwords = true;
+                 break;
+             case 's' : stemmer = wcsrmsfx;
+                 break;
+             case 'o' : output = optarg;
+                 break;
+             default: print_usage(); 
+                 exit(EXIT_FAILURE);
+        }
     }
 
-    file_count = load_directory_by_path(path);
+    if(directory_path == NULL || pir_code == NULL || output == NULL || context_length == 0) {
+        print_usage();
+        exit(EXIT_FAILURE);
+    }
+
+    if(load_directory_by_path(directory_path) == -1) {
+        wprintf(L"Unable to load directory %s\n", directory_path);
+        exit(EXIT_FAILURE);
+    } else {
+        directory_opened = true;
+    }
+
+    if(include_stopwords == false) {
+        if(load_stopwords("german.csv") == -1) {
+            wprintf(L"Unable to load stopwords.\n");
+            include_stopwords = true; // In order to not load them in cleanup()
+            cleanup();
+            exit(EXIT_FAILURE);
+        }
+    }
     
-    if(file_count == -1) {
-        goto clear;
+    token_n = context_length * 2 + 1;
+    current_file = next_filename();
+
+    context_buffer_size = token_n * TOKEN_SIZE + 12;
+    context_buffer = calloc(context_buffer_size, sizeof(wchar_t));
+    if(context_buffer == NULL) {
+        cleanup();
+        exit(EXIT_FAILURE);
     }
 
-    size_t context_buffer_size = (token_alloc * token_size) + 12;
-    context_buffer = calloc(context_buffer_size, sizeof(wchar_t));
+    result_v = calloc(result_a, sizeof(result_t));
+    if(result_v == NULL) {
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
 
-    results = calloc(result_alloc, sizeof(result_t));
+    while(current_file != NULL) {
+        fp_read = fopen(current_file, "r");
 
-    file_path = next_filename();
-
-    // Main loop, iterates through files
-    while(file_path != NULL) {
-        rf = fopen(file_path, "r");
-
-        token_n = 0;
-
-        if(rf == NULL) {
-            wprintf(L"Unable to read from file %s (ignored)", file_path);
-            continue;
+        if(fp_read == NULL) {
+            wprintf(L"Unable to read file '%s'.\n", current_file);
+            cleanup();
+            exit(EXIT_FAILURE);
         }
 
-        token_buffer = calloc(sizeof(wchar_t), token_size);
+        token_v = calloc(token_n, sizeof(token_t));
 
-        if(token_buffer == NULL) abort();
-
-        tokens = calloc(token_alloc, sizeof(token_t));
-
-        if(tokens == NULL) {
-            wprintf(L"Unable to allocate %u byte(s) of memory.\n", token_alloc * sizeof(token_t));
-            goto clear;
+        if(token_v == NULL) {
+            wprintf(L"Unable to allocate memory for cyclic array of tokens.\n");
+            fclose(fp_read);
+            cleanup();
+            exit(EXIT_FAILURE);
         }
 
-        for(register unsigned int i = 0; i < token_alloc; i++) {
-            tokens[i].value = calloc(sizeof(wchar_t), token_size);
-            if(tokens[i].value == NULL)
-                abort();
-        }
+        is_eof = 1; // Why start with 1?
+        token_c = 0;
+        decrement_token_count = context_length;
 
-        wint_t is_eof = 1;
-        size_t decrement_token_count = token_count;
-
-        // "Flush" the last tokens by running fwscanf not in head but have to loop run token_count times after EOF
-        while(decrement_token_count > 1) { // TODO constand width, to be adapted
-
+        while(decrement_token_count > 1) { // > 0 ?
             if(is_eof == EOF) {
                 decrement_token_count--;
-                wmemset(token_buffer, L'\0', token_size);
+                wmemset(token_buffer, L'\0', TOKEN_SIZE);
             } else {
-                is_eof = fwscanf(rf, L"%64ls", token_buffer);
+                is_eof = fwscanf(fp_read, L"%64ls", token_buffer);
             }
 
-            wcscpy(tokens[token_n % token_alloc].value, token_buffer);
+            wcscpy(token_v[token_c % token_n].value, token_buffer);
 
-            token_n++;
+            token_c++;
 
-            // Eval
-            if(eval(tokens[(token_n + token_count) % token_alloc].value)) {
+            if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer)) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
-                swprintf(context_buffer, context_buffer_size, L"[...] ");
-                for(register unsigned j = 0; j < token_alloc - (is_eof != EOF ? 0 : token_count); j++) {
-                    if(wcslen(tokens[(token_n + j) % token_alloc].value) > 0)
-                        swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"%ls ", tokens[(token_n + j) % token_alloc].value);
+                swprintf(context_buffer, context_buffer_size, L"[…] ");
+                for(register unsigned j = 0; j < token_n - (is_eof != EOF ? 0 : context_length); j++) {
+                    if(j == context_length)
+                        swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"<u>");
+                    if(wcslen(token_v[(token_c + j) % token_n].value) > 0)
+                        swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"%ls ", token_v[(token_c + j) % token_n].value);
+                    if(j == context_length)
+                        swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"</u> ");
                 }
-                swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"[...]\n\n");
+                swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"&nbsp;[…]");
 
-                results[result_alloc - 1].context = calloc(wcslen(context_buffer) + 1, sizeof(wchar_t));
-                wcscpy(results[result_alloc - 1].context, context_buffer);
+                result_v[result_n].key = calloc(wcslen(token_v[(token_c + context_length) % token_n].value) + 1, sizeof(wchar_t));
+                wcscpy(result_v[result_n].key, token_v[(token_c + context_length) % token_n].value);
 
-                results[result_alloc - 1].key = calloc(wcslen(tokens[(token_n + token_count) % token_alloc].value) + 1, sizeof(wchar_t));
-                wcscpy(results[result_alloc - 1].key, tokens[(token_n + token_count) % token_alloc].value);
+                wcsrmbydfn(result_v[result_n].key, iswpunct);
 
-                results[result_alloc - 1].section = calloc(strlen(file_path) + 1, sizeof(wchar_t)); // SIC
-                swprintf(results[result_alloc - 1].section, strlen(file_path) + 1, L"%s", file_path);
+                result_v[result_n].context = calloc(wcslen(context_buffer) + 1, sizeof(wchar_t));
+                wcscpy(result_v[result_n].context, context_buffer);
 
-                results[result_alloc - 1].rank = token_n;
+                result_v[result_n].section = calloc(strlen(current_file) + 1, sizeof(wchar_t));
+                swprintf(result_v[result_n].section, strlen(current_file) + 1, L"%s", current_file);
 
-                result_alloc++;
-                results = realloc(results, sizeof(result_t) * result_alloc);
+                result_v[result_n].rank = token_n;
+
+                result_n++;
+
+                if(result_n == result_a) {
+                    result_a *= 2;
+                    realloc_address = realloc(result_v, result_a * sizeof(result_t));
+                    if(realloc_address == NULL) {
+                        cleanup();
+                        exit(EXIT_FAILURE);
+                    }
+                    result_v = realloc_address;
+                }
             }
         }
 
-        for(register unsigned int i = 0; i < token_alloc; i++) {
-            free(tokens[i].value);
+        free(token_v);
+        fclose(fp_read);
+
+        current_file = next_filename();
+    }
+
+    result_a = result_n;
+
+    realloc_address = realloc(result_v, result_a * sizeof(result_t));
+    if(realloc_address == NULL) {
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+    result_v = realloc_address;
+
+    qsort(result_v, result_n - 1, sizeof(result_t), cmpres);
+
+    fp_write = fopen(output, "w");
+
+    if(fp_write == NULL) {
+        wprintf(L"Unable to open output file '%s'\n", output);
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Todo font size etc. as parameter
+
+    fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: 6pt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: 4;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, output);
+
+    for(register unsigned int i = 0; i < result_n - 1; i++) {
+        if(i > 0) {
+            if(wcscmp(result_v[i].key, result_v[i - 1].key) != 0)
+                fwprintf(fp_write, L"</p>\n\t\t<p><strong>%ls</strong> found in %ls:<br/>", result_v[i].key, result_v[i].section);
+        } else {
+            fwprintf(fp_write, L"\n\t\t<p><strong>%ls</strong> found in %ls:<br/>", result_v[i].key, result_v[i].section);
         }
-
-        if(tokens != NULL)
-            free(tokens);
-
-        fclose(rf);
-
-        free(token_buffer);
-
-        file_path = next_filename();
+        fwprintf(fp_write, L"\n\t\t%ls<br/>", result_v[i].context);
     }
 
-    qsort(results, result_alloc - 1, sizeof(result_t), cmpres);
+    fwprintf(fp_write, L"\n\t\t</div>\n\t</body>\n</html>");
 
-    for(register unsigned int i = 0; i < result_alloc - 1; i++) {
-        wprintf(L"Found '%ls' in %ls:\n%ls", results[i].key, results[i].section, results[i].context);
-    }
+    fclose(fp_write);
 
-    // Stats
-    wprintf(L"Matches:\t%u\nFiles:\t%u\n", result_alloc - 1, file_count);
-
-    close_directory();
-
-    clear:
-
-    free_stopwords();
-
-    for(register unsigned int i = 0; i < result_alloc - 1; i++) {
-        free(results[i].context);
-        free(results[i].key);
-        free(results[i].section);
-    }
-
-    free(results);
-    free(context_buffer);
+    cleanup();
+    exit(EXIT_SUCCESS);
 }
