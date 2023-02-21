@@ -14,6 +14,9 @@
 #define DEFAULT_FONT_SIZE 6
 #define MAXIMUM_FONT_SIZE 30
 
+#define DEFAULT_COL_COUNT 4
+#define MAXIMUM_COL_COUNT 12
+
 typedef struct token {
     wchar_t value[TOKEN_SIZE];
     wchar_t follows;
@@ -106,6 +109,7 @@ int main(int argc, char* argv[]) {
     size_t prefix = 0;
 
     size_t html_fontsize = DEFAULT_FONT_SIZE;
+    size_t html_columns = DEFAULT_COL_COUNT;
 
     result_t * realloc_address;
 
@@ -121,12 +125,13 @@ int main(int argc, char* argv[]) {
         {"output", required_argument, 0, 'o'},
         {"prefix", required_argument, 0, 'P'},
         {"html-fontsize", required_argument, 0, 'f'},
+        {"html-columns", required_argument, 0, 'C'},
         {0, 0, 0, 0}
     };
 
     setlocale(LC_ALL, "");
 
-    while ((opt = getopt_long(argc, argv,"f:P:p:c:n:o:xs", 
+    while ((opt = getopt_long(argc, argv,"C:f:P:p:c:n:o:xs", 
                    long_options, &long_index )) != -1) {
         switch (opt) {
              case 'p' : directory_path = optarg;
@@ -144,6 +149,8 @@ int main(int argc, char* argv[]) {
              case 'P' : prefix = atoi(optarg);
                  break;
              case 'f' : html_fontsize = atoi(optarg);
+                 break;
+             case 'C' : html_columns = atoi(optarg);
                  break;
              default: print_usage(); 
                  exit(EXIT_FAILURE);
@@ -185,6 +192,18 @@ int main(int argc, char* argv[]) {
 
     if(html_fontsize > MAXIMUM_FONT_SIZE) {
         html_fontsize = MAXIMUM_FONT_SIZE;
+    }
+
+    if(html_fontsize == 0) {
+        html_fontsize = 1;
+    }
+
+    if(html_columns > MAXIMUM_COL_COUNT) {
+        html_columns = MAXIMUM_COL_COUNT;
+    }
+
+    if(html_columns == 0) {
+        html_columns = 1;
     }
     
     token_n = context_length * 2 + 1;
@@ -302,7 +321,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: %upt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: 4;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, html_fontsize, output);
+    fwprintf(fp_write, L"<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<title>%s</title>\n\t\t<style>\n\t\t\tp {\n\t\t\t\tfont-family: sans-serif;\n\t\t\t\tfont-size: %upt;\n\t\t\t}\n\t\t\tdiv {\n\t\t\t\tcolumn-count: %u;\n\t\t\t}\n\t\t\t</style>\n\t</head>\n\t<body>\n\t\t<h1 style=\"font-family: sans-serif;\">%s</h1>\n\t\t<div>", output, html_fontsize, html_columns, output);
 
     for(register unsigned int i = 0; i < result_n; i++) {
         if(i > 0) {
