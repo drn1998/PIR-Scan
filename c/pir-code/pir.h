@@ -6,6 +6,7 @@
 #include <wctype.h>
 #include <string.h>
 
-void write_pir_code(const wchar_t * s, char c[5]);
+#include "../string-util/string-util.h"
 
+void write_pir_code(const wchar_t * s, char c[5]);
 #endif

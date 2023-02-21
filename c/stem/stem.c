@@ -3,17 +3,6 @@
 
 #include "stem.h"
 
-int wcssfx(const wchar_t * ws, const wchar_t * sx)
-{
-    if (!ws || !sx)
-        return 0;
-    size_t lenstr = wcslen(ws);
-    size_t lensuffix = wcslen(sx);
-    if (lensuffix >  lenstr)
-        return 0;
-    return wcsncmp(ws + lenstr - lensuffix, sx, lensuffix) == 0;
-}
-
 void wcsrmsfx(wchar_t * ws) {
     register unsigned int i;
     bool changed = true;

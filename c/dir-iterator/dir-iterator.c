@@ -67,13 +67,13 @@ int load_directory_by_path(char * path) {
         return -1;
     }
 
-    return filename_n + 1;
+    return filename_n;
 }
 
 char * next_filename() {
     static size_t n = 0;
 
-    if(filename_n == 1) {
+    if(filename_n == 0) {
         return NULL;
     }
 
