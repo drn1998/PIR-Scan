@@ -6,7 +6,7 @@
 #include "../stem/stem.h"
 
 int main(int argc, char * argv[]) {
-    char pir[5] = {'3', '\0', '\0', '\0', '\0'};
+    char pir[PIR_CODE_LENGTH] = {'3', '\0', '\0', '\0', '\0'};
     int result;
 
     setlocale(LC_ALL, "");
