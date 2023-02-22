@@ -43,8 +43,8 @@ const char * code[] = {
 		"966", "967"
 	};
 
-void write_pir_code(const wchar_t * s, char c[5]) {
-	unsigned short digits[5] = {0};
+void write_pir_code(const wchar_t * s, char c[PIR_CODE_LENGTH]) {
+	unsigned short digits[PIR_CODE_LENGTH] = {0};
 	size_t digits_pos = 0;
 
 	register unsigned int i, j;
@@ -65,7 +65,7 @@ void write_pir_code(const wchar_t * s, char c[5]) {
 		for(i = 0; i < sizeof(code)/sizeof(char*); i++) {
 			if(wcspfx(cp + offset, verb[i])) {
 				for(j = 0; j < strlen(code[i]); j++) {
-					digits[digits_pos % 5] = (digits[digits_pos % 5] + (code[i][j] - '0')) % 10;
+					digits[digits_pos % PIR_CODE_LENGTH] = (digits[digits_pos % PIR_CODE_LENGTH] + (code[i][j] - '0')) % 10;
 					digits_pos++;
 				}
 				offset += wcslen(verb[i]);
@@ -77,7 +77,7 @@ void write_pir_code(const wchar_t * s, char c[5]) {
 		}
 	}
 
-	for(i = 0; i < 5; i++) {
+	for(i = 0; i < PIR_CODE_LENGTH; i++) {
 		c[i] = '0' + digits[i];
 	}
 }

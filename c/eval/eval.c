@@ -1,8 +1,8 @@
 #include "eval.h"
 
-int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix) {
+int eval(const wchar_t * token_wcs, const char pir_match[PIR_CODE_LENGTH], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix) {
     wchar_t local[TOKEN_SIZE];
-    char pir[5];
+    char pir[PIR_CODE_LENGTH];
 
     if(wcslen(token_wcs) > TOKEN_SIZE - 1) {
         abort();
