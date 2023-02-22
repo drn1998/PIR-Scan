@@ -281,7 +281,7 @@ int main(int argc, char* argv[]) {
             if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer, prefix)) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
                 swprintf(context_buffer, context_buffer_size, L"[…] ");
-                for(register unsigned j = 0; j < token_n - (is_eof != EOF ? 0 : context_length); j++) {
+                for(register unsigned j = 0; j < context_length + decrement_token_count; j++) {
                     if(j == context_length)
                         swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"<u>");
                     if(wcslen(token_v[(token_c + j) % token_n].value) > 0)
