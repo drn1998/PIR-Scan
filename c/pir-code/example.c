@@ -4,12 +4,12 @@
 #include <locale.h>
 
 int main(int argc, char* argv[]) {
-	char out[5];
+	char out[PIR_CODE_LENGTH];
 
 	setlocale(LC_ALL, "");
 
 	write_pir_code(L"lyssavirus", out);
-	wprintf(L"%.5s\n", out);
+	wprintf(L"%.*s\n", PIR_CODE_LENGTH, out);
 	
 	return 0;
 }
