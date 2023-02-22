@@ -324,14 +324,20 @@ int main(int argc, char* argv[]) {
         current_file = next_filename();
     }
 
-    result_a = result_n;
+    if(result_n > 0) {
+        result_a = result_n;
 
-    realloc_address = realloc(result_v, result_a * sizeof(result_t));
-    if(realloc_address == NULL) {
+        realloc_address = realloc(result_v, result_a * sizeof(result_t));
+        if(realloc_address == NULL) {
+            cleanup();
+            exit(EXIT_FAILURE);
+        }
+        result_v = realloc_address;
+    } else {
         cleanup();
-        exit(EXIT_FAILURE);
+        wprintf(L"No results found.\n");
+        exit(EXIT_SUCCESS);
     }
-    result_v = realloc_address;
 
     qsort(result_v, result_n, sizeof(result_t), cmpres);
 
