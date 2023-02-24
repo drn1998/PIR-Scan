@@ -51,6 +51,9 @@ size_t context_buffer_size; // Size of the buffer where the context string writt
 bool include_stopwords = false;
 bool directory_opened = false;
 
+wchar_t ** token_buffer_v = NULL;  // The span of tokens provided to the eval method
+size_t span = 8;
+
 /**
  * @brief Compares two wide character strings without regarding upper/lower case.
  * 
@@ -106,6 +109,12 @@ void cleanup() {
     }
 
     free(result_v);
+
+    for(register size_t i = 0; i < span; i++) {
+        free(token_buffer_v[i]);
+    }
+
+    free(token_buffer_v);
 
     return;
 }
@@ -227,6 +236,10 @@ int main(int argc, char* argv[]) {
     if(html_columns == 0) {
         html_columns = 1;
     }
+
+    if(context_length < 2 * span + 1) {
+        context_length = 2 * span + 1;
+    }
     
     token_n = context_length * 2 + 1;
     current_file = next_filename();
@@ -242,6 +255,20 @@ int main(int argc, char* argv[]) {
     if(result_v == NULL) {
         cleanup();
         exit(EXIT_FAILURE);
+    }
+
+    token_buffer_v = calloc(sizeof(wchar_t *), span);
+    if(token_buffer_v == NULL) {
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    for(register size_t i = 0; i < span; i++) {
+        token_buffer_v[i] = calloc(sizeof(wchar_t), TOKEN_SIZE);
+        if(token_buffer_v[i] == NULL) {
+            cleanup();
+            exit(EXIT_FAILURE);
+        }
     }
 
     while(current_file != NULL) {
@@ -276,9 +303,13 @@ int main(int argc, char* argv[]) {
 
             wcscpy(token_v[token_c % token_n].value, token_buffer);
 
+            for(register size_t i = span; i > 0; i--) {
+                wcscpy(token_buffer_v[span - i], token_v[(token_c - (span + i)) % token_n].value);
+            }
+
             token_c++;
 
-            if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer, prefix)) {
+            if(eval(token_buffer_v, span, pir_code, !include_stopwords, stemmer, prefix)) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
                 swprintf(context_buffer, context_buffer_size, L"[…] ");
                 for(register unsigned j = 0; j < context_length + decrement_token_count; j++) {

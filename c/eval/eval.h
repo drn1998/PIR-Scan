@@ -21,6 +21,6 @@
  * @param prefix The number of characters significant for the comparison
  * @return 1, if evaluated true, otherwise 0
  */
-int eval(const wchar_t * token_wcs, const char pir_match[5], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix);
+int eval(wchar_t ** token_v, size_t token_n, const char pir_match[PIR_CODE_LENGTH], bool exclude_stopword, void(*stem)(wchar_t *), size_t prefix);
 
 #endif
