@@ -8,7 +8,7 @@
 
 #include "../string-util/string-util.h"
 
-#define PIR_CODE_LENGTH 5
+#define PIR_CODE_LENGTH 3
 
 typedef struct {
     char pir[PIR_CODE_LENGTH];
