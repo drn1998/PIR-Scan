@@ -52,7 +52,7 @@ bool include_stopwords = false;
 bool directory_opened = false;
 
 wchar_t ** token_buffer_v = NULL;  // The span of tokens provided to the eval method
-size_t span = 8;
+size_t span = 1;
 
 /**
  * @brief Compares two wide character strings without regarding upper/lower case.
@@ -313,19 +313,25 @@ int main(int argc, char* argv[]) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
                 swprintf(context_buffer, context_buffer_size, L"[…] ");
                 for(register unsigned j = 0; j < context_length + decrement_token_count; j++) {
-                    if(j == context_length)
+                    if(j == context_length + 1)
                         swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"<u>");
                     if(wcslen(token_v[(token_c + j) % token_n].value) > 0)
                         swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"%ls ", token_v[(token_c + j) % token_n].value);
-                    if(j == context_length)
+                    if(j == context_length + span)
                         swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"</u> ");
                 }
                 swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"&nbsp;[…]");
 
-                result_v[result_n].key = calloc(wcslen(token_v[(token_c + context_length) % token_n].value) + 1, sizeof(wchar_t));
-                wcscpy(result_v[result_n].key, token_v[(token_c + context_length) % token_n].value);
+                result_v[result_n].key = calloc(TOKEN_SIZE * span, sizeof(wchar_t));
+                for(register size_t i = 0; i < span; i++) {
+                    swprintf(result_v[result_n].key + wcslen(result_v[result_n].key), TOKEN_SIZE * span, L"%ls", token_v[(token_c + context_length + 1 + i) % token_n].value);
+                    if (i != span - 1) {
+                        swprintf(result_v[result_n].key + wcslen(result_v[result_n].key), TOKEN_SIZE * span, L" ");
+                    }
+                }
+                //wcscpy(result_v[result_n].key, token_v[(token_c + context_length + 1) % token_n].value);
 
-                wcsrmbydfn(result_v[result_n].key, iswpunct);
+                //wcsrmbydfn(result_v[result_n].key, iswpunct);
 
                 result_v[result_n].context = calloc(wcslen(context_buffer) + 1, sizeof(wchar_t));
                 wcscpy(result_v[result_n].context, context_buffer);
