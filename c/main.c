@@ -110,11 +110,13 @@ void cleanup() {
 
     free(result_v);
 
-    for(register size_t i = 0; i < span; i++) {
-        free(token_buffer_v[i]);
-    }
+    if(token_buffer_v != NULL) {
+        for(register size_t i = 0; i < span; i++) {
+            free(token_buffer_v[i]);
+        }
 
-    free(token_buffer_v);
+        free(token_buffer_v);
+    }
 
     return;
 }
@@ -157,12 +159,13 @@ int main(int argc, char* argv[]) {
         {"prefix", required_argument, 0, 'P'},
         {"html-fontsize", required_argument, 0, 'f'},
         {"html-columns", required_argument, 0, 'C'},
+        {"span", required_argument, 0, 'S'},
         {0, 0, 0, 0}
     };
 
     setlocale(LC_ALL, "");
 
-    while ((opt = getopt_long(argc, argv,"C:f:P:p:c:n:o:xs", 
+    while ((opt = getopt_long(argc, argv,"C:f:P:p:c:n:o:S:xs", 
                    long_options, &long_index )) != -1) {
         switch (opt) {
              case 'p' : directory_path = optarg;
@@ -182,6 +185,8 @@ int main(int argc, char* argv[]) {
              case 'f' : html_fontsize = atoi(optarg);
                  break;
              case 'C' : html_columns = atoi(optarg);
+                 break;
+             case 'S' : span = atoi(optarg);
                  break;
              default: print_usage(); 
                  exit(EXIT_FAILURE);
@@ -215,8 +220,20 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    if(span == 0 || span > 5) {
+        wprintf(L"Invalid span length: Must be in range 1 to 5.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
     if(prefix != 0 && stemmer != NULL) {
         wprintf(L"Error: Prefix and stemming cannot coexist.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    if(prefix != 0 && span != 1) {
+        wprintf(L"Error: Prefix cannot be used with span > 1\n");
         cleanup();
         exit(EXIT_FAILURE);
     }

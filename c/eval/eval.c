@@ -30,6 +30,14 @@ int eval(wchar_t ** token_v, size_t token_n, const char pir_match[PIR_CODE_LENGT
     for(register size_t i = 0; i < token_n; i++) {
         wcscpy(local, token_v[i]);
         wcsrmbydfn(local, iswpunct);
+        if(stem != NULL) {
+            stem(local);
+        }
+        if(prefix != 0 && wcslen(local) >= prefix) {
+            local[prefix] = '\0';
+        } else if (wcslen(local) < prefix) {
+            return 0;
+        }
         pir_code_write(local, &pir_code);
         if(i != token_n - 1) {
             pir_code_write(L" ", &pir_code);
