@@ -1,6 +1,6 @@
 #include "stopword.h"
 
-stopword_t * stopword_v;
+stopword_t * stopword_v = NULL;
 size_t stopword_n;
 
 int stopword_cmp(const void * a, const void * b) {
@@ -10,7 +10,7 @@ int stopword_cmp(const void * a, const void * b) {
 }
 
 int unique(const void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
-    unsigned register int i;
+    register unsigned int i;
 
     for (i = 1; i < nmemb; i++) {
         if(compar(base + (i - 1) * size, base + i * size) == 0) {
@@ -82,12 +82,15 @@ int load_stopwords(char * fpth) {
     qsort(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
     if(!unique(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp)) { return -1; }
 
-    return stopword_n + 1;
+    return stopword_n;
 }
 
 int is_stopword(wchar_t * ws) {
     stopword_t key;
     stopword_t * result;
+
+    if(ws == NULL || stopword_v == NULL)
+        return -1;
 
     key.text = calloc(wcslen(ws) + 1, sizeof(wchar_t));
 
@@ -124,6 +127,8 @@ void free_stopwords() {
 	}
 
 	free(stopword_v);
+
+    stopword_v = NULL;
 
     return;
 }
