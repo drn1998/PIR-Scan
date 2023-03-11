@@ -69,18 +69,20 @@ int load_stopwords(char * fpth) {
 
     fclose(fp);
 
-    stopword_a = stopword_n;
-    new_memory = realloc(stopword_v, stopword_a * sizeof(stopword_t));
+    if(stopword_n != 0) {
+        stopword_a = stopword_n;
+        new_memory = realloc(stopword_v, stopword_a * sizeof(stopword_t));
 
-    if(new_memory == NULL) {
-        free_stopwords();
-        return -1;
+        if(new_memory == NULL) {
+            free_stopwords();
+            return -1;
+        }
+
+        stopword_v = new_memory;
+
+        qsort(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
+        if(!unique(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp)) { return -1; }
     }
-
-    stopword_v = new_memory;
-
-    qsort(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp);
-    if(!unique(stopword_v, stopword_n, sizeof(stopword_t), stopword_cmp)) { return -1; }
 
     return stopword_n;
 }
