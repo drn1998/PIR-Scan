@@ -51,6 +51,9 @@ size_t context_buffer_size; // Size of the buffer where the context string writt
 bool include_stopwords = false;
 bool directory_opened = false;
 
+wchar_t ** token_buffer_v = NULL;  // The span of tokens provided to the eval method
+size_t span = 1;
+
 /**
  * @brief Compares two wide character strings without regarding upper/lower case.
  * 
@@ -107,6 +110,14 @@ void cleanup() {
 
     free(result_v);
 
+    if(token_buffer_v != NULL) {
+        for(register size_t i = 0; i < span; i++) {
+            free(token_buffer_v[i]);
+        }
+
+        free(token_buffer_v);
+    }
+
     return;
 }
 
@@ -148,12 +159,13 @@ int main(int argc, char* argv[]) {
         {"prefix", required_argument, 0, 'P'},
         {"html-fontsize", required_argument, 0, 'f'},
         {"html-columns", required_argument, 0, 'C'},
+        {"span", required_argument, 0, 'S'},
         {0, 0, 0, 0}
     };
 
     setlocale(LC_ALL, "");
 
-    while ((opt = getopt_long(argc, argv,"C:f:P:p:c:n:o:xs", 
+    while ((opt = getopt_long(argc, argv,"C:f:P:p:c:n:o:S:xs", 
                    long_options, &long_index )) != -1) {
         switch (opt) {
              case 'p' : directory_path = optarg;
@@ -173,6 +185,8 @@ int main(int argc, char* argv[]) {
              case 'f' : html_fontsize = atoi(optarg);
                  break;
              case 'C' : html_columns = atoi(optarg);
+                 break;
+             case 'S' : span = atoi(optarg);
                  break;
              default: print_usage(); 
                  exit(EXIT_FAILURE);
@@ -206,8 +220,20 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    if(span == 0 || span > 5) {
+        wprintf(L"Invalid span length: Must be in range 1 to 5.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
     if(prefix != 0 && stemmer != NULL) {
         wprintf(L"Error: Prefix and stemming cannot coexist.\n");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    if(prefix != 0 && span != 1) {
+        wprintf(L"Error: Prefix cannot be used with span > 1\n");
         cleanup();
         exit(EXIT_FAILURE);
     }
@@ -227,6 +253,10 @@ int main(int argc, char* argv[]) {
     if(html_columns == 0) {
         html_columns = 1;
     }
+
+    if(context_length < 2 * span + 1) {
+        context_length = 2 * span + 1;
+    }
     
     token_n = context_length * 2 + 1;
     current_file = next_filename();
@@ -242,6 +272,20 @@ int main(int argc, char* argv[]) {
     if(result_v == NULL) {
         cleanup();
         exit(EXIT_FAILURE);
+    }
+
+    token_buffer_v = calloc(sizeof(wchar_t *), span);
+    if(token_buffer_v == NULL) {
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    for(register size_t i = 0; i < span; i++) {
+        token_buffer_v[i] = calloc(sizeof(wchar_t), TOKEN_SIZE);
+        if(token_buffer_v[i] == NULL) {
+            cleanup();
+            exit(EXIT_FAILURE);
+        }
     }
 
     while(current_file != NULL) {
@@ -276,25 +320,35 @@ int main(int argc, char* argv[]) {
 
             wcscpy(token_v[token_c % token_n].value, token_buffer);
 
+            for(register size_t i = span; i > 0; i--) {
+                wcscpy(token_buffer_v[span - i], token_v[(token_c - (span + i)) % token_n].value);
+            }
+
             token_c++;
 
-            if(eval(token_v[(token_c + context_length) % token_n].value, pir_code, !include_stopwords, stemmer, prefix)) {
+            if(eval(token_buffer_v, span, pir_code, !include_stopwords, stemmer, prefix)) {
                 wmemset(context_buffer, L'\0', context_buffer_size);
                 swprintf(context_buffer, context_buffer_size, L"[…] ");
                 for(register unsigned j = 0; j < context_length + decrement_token_count; j++) {
-                    if(j == context_length)
+                    if(j == context_length + 1)
                         swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"<u>");
                     if(wcslen(token_v[(token_c + j) % token_n].value) > 0)
                         swprintf(context_buffer + wcslen(context_buffer), context_buffer_size - wcslen(context_buffer), L"%ls ", token_v[(token_c + j) % token_n].value);
-                    if(j == context_length)
+                    if(j == context_length + span)
                         swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"</u> ");
                 }
                 swprintf(context_buffer + wcslen(context_buffer) - 1, context_buffer_size - wcslen(context_buffer), L"&nbsp;[…]");
 
-                result_v[result_n].key = calloc(wcslen(token_v[(token_c + context_length) % token_n].value) + 1, sizeof(wchar_t));
-                wcscpy(result_v[result_n].key, token_v[(token_c + context_length) % token_n].value);
+                result_v[result_n].key = calloc(TOKEN_SIZE * span, sizeof(wchar_t));
+                for(register size_t i = 0; i < span; i++) {
+                    swprintf(result_v[result_n].key + wcslen(result_v[result_n].key), TOKEN_SIZE * span, L"%ls", token_v[(token_c + context_length + 1 + i) % token_n].value);
+                    if (i != span - 1) {
+                        swprintf(result_v[result_n].key + wcslen(result_v[result_n].key), TOKEN_SIZE * span, L" ");
+                    }
+                }
+                //wcscpy(result_v[result_n].key, token_v[(token_c + context_length + 1) % token_n].value);
 
-                wcsrmbydfn(result_v[result_n].key, iswpunct);
+                //wcsrmbydfn(result_v[result_n].key, iswpunct);
 
                 result_v[result_n].context = calloc(wcslen(context_buffer) + 1, sizeof(wchar_t));
                 wcscpy(result_v[result_n].context, context_buffer);
