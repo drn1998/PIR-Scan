@@ -47,15 +47,5 @@ int eval(wchar_t ** token_v, size_t token_n, const char pir_match[PIR_CODE_LENGT
     if(!strpfx(pir_code.pir, pir_match))
         return 0;
 
-    wprintf(L"%.*s '", PIR_CODE_LENGTH, pir_code.pir);
-    for(register size_t i = 0; i < token_n; i++) {
-        wprintf(L"%ls", token_v[i]);
-        if(i != token_n - 1) {
-            wprintf(L" ");
-        }
-    }
-
-    wprintf(L"'\n");
-
     return 1;
 }
